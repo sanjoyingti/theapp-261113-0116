@@ -31,12 +31,24 @@ data class UserSettings(
     val catalogueTime: Long = 0L
 )
 
+private fun decodeResume(raw: String): Map<String, Long> =
+    raw.split(";")
+        .filter { it.contains(":") }
+        .mapNotNull { entry ->
+            val key = entry.substringBeforeLast(":")
+            val value = entry.substringAfterLast(":").toLongOrNull() ?: 0L
+            if (key.isBlank()) null else key to value
+        }
+        .toMap()
+
+private fun encodeResume(map: Map<String, Long>): String =
+    map.entries.joinToString(";") { "${it.key}:${it.value}" }
+
 fun Preferences.toSettings(): UserSettings = UserSettings(
     movieServer = this[Keys.MOVIE_SERVER] ?: "",
     tmdbKey = this[Keys.TMDB_KEY] ?: "",
     myList = (this[Keys.MY_LIST] ?: "").split(",").filter { it.isNotBlank() }.toSet(),
-    resume = (this[Keys.RESUME] ?: "").split(";").filter { it.contains(":") }
-        .associate { val p = it.split(":"); p[0] to (p.getOrNull(1)?.toLongOrNull() ?: 0L) },
+    resume = decodeResume(this[Keys.RESUME] ?: ""),
     signedInEmail = this[Keys.SIGNED_IN] ?: "",
     catalogueJson = this[Keys.CATALOGUE] ?: "",
     catalogueTime = this[Keys.CATALOGUE_TIME] ?: 0L
@@ -64,7 +76,10 @@ class SettingsStore(private val context: Context) {
 
     suspend fun toggleMyList(id: String) {
         context.dataStore.edit { prefs ->
-            val current = (prefs[Keys.MY_LIST] ?: "").split(",").filter { it.isNotBlank() }.toMutableSet()
+            val current = (prefs[Keys.MY_LIST] ?: "")
+                .split(",")
+                .filter { it.isNotBlank() }
+                .toMutableSet()
             if (!current.add(id)) current.remove(id)
             prefs[Keys.MY_LIST] = current.joinToString(",")
         }
@@ -72,7 +87,7 @@ class SettingsStore(private val context: Context) {
 
     suspend fun saveResume(map: Map<String, Long>) {
         context.dataStore.edit { prefs ->
-            prefs[Keys.RESUME] = map.entries.joinToString(";") { "${it.key}:${it.value}" }
+            prefs[Keys.RESUME] = encodeResume(map)
         }
     }
 

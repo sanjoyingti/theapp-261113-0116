@@ -61,4 +61,5 @@ implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
 implementation("androidx.media3:media3-exoplayer:1.11.1")
 implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
 implementation("androidx.media3:media3-ui:1.11.1")
+implementation("androidx.datastore:datastore-preferences:1.1.7")
         }
