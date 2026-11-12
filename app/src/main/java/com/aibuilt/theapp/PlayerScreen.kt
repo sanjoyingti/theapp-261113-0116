@@ -1,5 +1,6 @@
 package com.aibuilt.theapp
 
+import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,12 +13,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -35,12 +40,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
-import android.view.ViewGroup
+import kotlinx.coroutines.delay
 
 @Composable
 fun PlayerScreen(
@@ -50,19 +54,16 @@ fun PlayerScreen(
     onProgress: (Long) -> Unit
 ) {
     val context = LocalContext.current
-    var isReady by remember { mutableStateOf(false) }
-    var errorText by remember { mutableStateOf<String?>(null) }
+    var isReady by remember(movie.url) { mutableStateOf(false) }
+    var errorText by remember(movie.url) { mutableStateOf<String?>(null) }
 
-    val player = remember(movie.url) {
-        ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(context)))
-            .build()
-            .apply {
-                setMediaItem(MediaItem.fromUri(movie.url))
-                prepare()
-                if (startPosition > 0) seekTo(startPosition)
-                playWhenReady = true
-            }
+    val player: ExoPlayer = remember(movie.url) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(movie.url))
+            prepare()
+            if (startPosition > 0) seekTo(startPosition)
+            playWhenReady = true
+        }
     }
 
     DisposableEffect(player) {
@@ -71,7 +72,7 @@ fun PlayerScreen(
                 if (state == Player.STATE_READY) isReady = true
             }
 
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            override fun onPlayerError(error: PlaybackException) {
                 errorText = "This film could not be played. Check the source in Profile → Settings, then retry."
                 isReady = true
             }
@@ -84,9 +85,9 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(player) {
         while (true) {
-            kotlinx.coroutines.delay(4000)
+            delay(4000)
             onProgress(player.currentPosition)
         }
     }
@@ -121,7 +122,10 @@ fun PlayerScreen(
                 .align(Alignment.TopStart),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.background(Color.Black.copy(alpha = 0.4f))) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.4f))
+            ) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
             Spacer(Modifier.width(8.dp))
@@ -130,38 +134,42 @@ fun PlayerScreen(
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                modifier = Modifier.background(Color.Black.copy(alpha = 0.4f)).padding(horizontal = 8.dp, vertical = 4.dp)
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
 
-        if (errorText != null) {
+        val message = errorText
+        if (message != null) {
             Column(
                 Modifier
                     .align(Alignment.Center)
                     .padding(28.dp)
-                    .background(RhSurface.copy(alpha = 0.95f), androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                    .background(RhSurface.copy(alpha = 0.95f), RoundedCornerShape(14.dp))
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(errorText!!, color = Color(0xFFF3F3F6), fontSize = 14.sp)
+                Text(message, color = Color(0xFFF3F3F6), fontSize = 14.sp)
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    androidx.compose.material3.Button(
+                    Button(
                         onClick = {
                             errorText = null
                             isReady = false
                             player.prepare()
                             player.playWhenReady = true
                         },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = RhGold, contentColor = RhBackground
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = RhGold,
+                            contentColor = RhBackground
                         )
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Retry", fontWeight = FontWeight.Bold)
                     }
-                    androidx.compose.material3.OutlinedButton(onClick = onBack) {
+                    OutlinedButton(onClick = onBack) {
                         Text("Back")
                     }
                 }
